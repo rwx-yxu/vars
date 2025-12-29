@@ -8,8 +8,10 @@ func NewCmd(appName string) *cobra.Command {
 	vars := New(appName)
 
 	cmd := &cobra.Command{
-		Use:   "vars",
-		Short: "Manage variables for " + appName,
+		Use:           "vars",
+		Short:         "Manage variables for " + appName,
+		SilenceUsage:  true,
+		SilenceErrors: true,
 	}
 
 	cmd.AddCommand(&cobra.Command{

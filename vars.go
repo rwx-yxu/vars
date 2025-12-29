@@ -26,23 +26,29 @@ func New(name string) *Vars {
 }
 
 func (v *Vars) Init() error {
-	// check XDG_STATE_HOME env path first
 
-	root, err := v.root()
+	path, err := v.basePath()
+	if err != nil {
+		return err
+	}
+
+	if err := os.MkdirAll(path, 0700); err != nil {
+		return fmt.Errorf("failed to create state dir: %w", err)
+	}
+
+	root, err := os.OpenRoot(path)
 	if err != nil {
 		return fmt.Errorf("failed to open root: %w", err)
 	}
 
 	defer root.Close()
 
-	f, err := root.OpenFile("vars.properties", os.O_RDONLY|os.O_CREATE, 0644)
+	f, err := root.OpenFile("vars.properties", os.O_RDONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return fmt.Errorf("failed to open file: %w", err)
 	}
 
-	if err := f.Close(); err != nil {
-		return fmt.Errorf("failed to close file: %w", err)
-	}
+	defer f.Close()
 
 	return nil
 }
@@ -56,24 +62,34 @@ func (v *Vars) root() (*os.Root, error) {
 		return nil, fmt.Errorf("invalid app name %q: must be alphanumeric/safe", v.name)
 	}
 
+	path, err := v.basePath()
+	if err != nil {
+		return nil, err
+	}
+
+	root, err := os.OpenRoot(path)
+	if os.IsNotExist(err) {
+		return nil, fmt.Errorf("vars not initialized for %q (run 'init' first)", v.name)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return root, nil
+
+}
+
+func (v *Vars) basePath() (string, error) {
+	// XDG Compliance: Check env var first
+	if xdg := os.Getenv("XDG_STATE_HOME"); xdg != "" {
+		return filepath.Join(xdg, v.name), nil
+	}
+
+	// Fallback to ~/.local/state
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-
-	homeRoot, err := os.OpenRoot(home)
-	if err != nil {
-		return nil, err
-	}
-	defer homeRoot.Close()
-
-	relPath := filepath.Join(".local", "state", v.name)
-
-	if err := homeRoot.MkdirAll(relPath, 0700); err != nil {
-		return nil, err
-	}
-
-	return homeRoot.OpenRoot(relPath)
+	return filepath.Join(home, ".local", "state", v.name), nil
 }
 
 func (v *Vars) Get(key string) (string, error) {

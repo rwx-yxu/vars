@@ -9,26 +9,32 @@ import (
 )
 
 func Execute() {
-	root := newStandaloneCmd()
+	root := cmd()
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
 
-func newStandaloneCmd() *cobra.Command {
+func cmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "vars",
-		Short: "Manage stateful properties for any application",
+		Use:           "vars",
+		Short:         "Manage stateful properties for any application",
+		SilenceUsage:  true,
+		SilenceErrors: true,
 	}
 
 	cmd.AddCommand(&cobra.Command{
 		Use:   "init <name>",
-		Short: "initialize empty vars file for <name>",
-		Args:  cobra.ExactArgs(1),
+		Short: "Initialize storage (Required before use)",
+		Args:  cobra.ExactArgs(0),
 		RunE: func(c *cobra.Command, args []string) error {
-			vars := vars.New(args[0])
-			return vars.Init()
+			v := vars.New(args[0])
+			if err := v.Init(); err != nil {
+				return err
+			}
+			c.Println("Initialized vars properties")
+			return nil
 		},
 	})
 	cmd.AddCommand(&cobra.Command{
