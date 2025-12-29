@@ -1,5 +1,7 @@
 package main
 
-func main() {
+import "github.com/rwx-yxu/vars/internal/standalone"
 
+func main() {
+	standalone.Execute()
 }
