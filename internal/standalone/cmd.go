@@ -3,6 +3,7 @@ package standalone
 import (
 	"fmt"
 	"os"
+	"sort"
 
 	"github.com/rwx-yxu/vars"
 	"github.com/spf13/cobra"
@@ -37,6 +38,7 @@ func cmd() *cobra.Command {
 			return nil
 		},
 	})
+
 	cmd.AddCommand(&cobra.Command{
 		Use:   "set <name> <key> <value>",
 		Short: "Set a variable for a specific property",
@@ -44,6 +46,65 @@ func cmd() *cobra.Command {
 		RunE: func(c *cobra.Command, args []string) error {
 			store := vars.New(args[0])
 			return store.Set(args[1], args[2])
+		},
+	})
+
+	cmd.AddCommand(&cobra.Command{
+		Use:   "unset <name> <key>",
+		Short: "Unset a variable property key value",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(c *cobra.Command, args []string) error {
+			v := vars.New(args[0])
+			return v.Unset(args[1])
+		},
+	})
+
+	cmd.AddCommand(&cobra.Command{
+		Use:   "data <name>",
+		Short: "Prints all vars for given name",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(c *cobra.Command, args []string) error {
+			v := vars.New(args[0])
+			data, err := v.All()
+			if err != nil {
+				return err
+			}
+
+			keys := make([]string, 0, len(data))
+			for k := range data {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+
+			for _, k := range keys {
+				c.Printf("%s=%s\n", k, data[k])
+			}
+			return nil
+		},
+	})
+
+	cmd.AddCommand(&cobra.Command{
+		Use:     "keys <name>",
+		Aliases: []string{"k"},
+		Short:   "List all keys for given vars name",
+		Args:    cobra.ExactArgs(1),
+		RunE: func(c *cobra.Command, args []string) error {
+			v := vars.New(args[0])
+			data, err := v.All()
+			if err != nil {
+				return err
+			}
+
+			keys := make([]string, 0, len(data))
+			for k := range data {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+
+			for _, k := range keys {
+				c.Printf("%s\n", k)
+			}
+			return nil
 		},
 	})
 

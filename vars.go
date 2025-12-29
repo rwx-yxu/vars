@@ -123,7 +123,7 @@ func (v *Vars) Set(key, val string) error {
 	return v.save(m)
 }
 
-func (v *Vars) Delete(key string) error {
+func (v *Vars) Unset(key string) error {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 

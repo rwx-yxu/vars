@@ -1,6 +1,8 @@
 package vars
 
 import (
+	"sort"
+
 	"github.com/spf13/cobra"
 )
 
@@ -30,6 +32,62 @@ func NewCmd(appName string) *cobra.Command {
 		Args:  cobra.ExactArgs(2),
 		RunE: func(c *cobra.Command, args []string) error {
 			return vars.Set(args[0], args[1])
+		},
+	})
+
+	cmd.AddCommand(&cobra.Command{
+		Use:   "unset <key>",
+		Short: "Unset a variable property key value",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(c *cobra.Command, args []string) error {
+			return vars.Unset(args[1])
+		},
+	})
+
+	cmd.AddCommand(&cobra.Command{
+		Use:   "data",
+		Short: "Prints all vars",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(c *cobra.Command, args []string) error {
+			data, err := vars.All()
+			if err != nil {
+				return err
+			}
+
+			keys := make([]string, 0, len(data))
+			for k := range data {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+
+			for _, k := range keys {
+				c.Printf("%s=%s\n", k, data[k])
+			}
+			return nil
+		},
+	})
+
+	cmd.AddCommand(&cobra.Command{
+		Use:     "keys",
+		Aliases: []string{"k"},
+		Short:   "Prints all keys",
+		Args:    cobra.ExactArgs(1),
+		RunE: func(c *cobra.Command, args []string) error {
+			data, err := vars.All()
+			if err != nil {
+				return err
+			}
+
+			keys := make([]string, 0, len(data))
+			for k := range data {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+
+			for _, k := range keys {
+				c.Printf("%s\n", k)
+			}
+			return nil
 		},
 	})
 
