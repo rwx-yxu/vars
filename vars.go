@@ -64,14 +64,6 @@ func (v *Vars) Init() error {
 }
 
 func (v *Vars) root() (*os.Root, error) {
-	if v.scope == "" {
-		return nil, fmt.Errorf("vars name cannot be empty")
-	}
-
-	if !validNameRegex.MatchString(v.scope) {
-		return nil, fmt.Errorf("invalid app name %q: must be alphanumeric/safe", v.scope)
-	}
-
 	path, err := v.basePath()
 	if err != nil {
 		return nil, err
@@ -79,7 +71,11 @@ func (v *Vars) root() (*os.Root, error) {
 
 	root, err := os.OpenRoot(path)
 	if os.IsNotExist(err) {
-		return nil, fmt.Errorf("vars not initialized for %q (run 'init' first)", v.scope)
+		target := v.namespace
+		if v.scope != "" {
+			target = filepath.Join(target, v.scope)
+		}
+		return nil, fmt.Errorf("vars not initialized for %q (run 'init' first)", target)
 	}
 	if err != nil {
 		return nil, err
@@ -89,6 +85,14 @@ func (v *Vars) root() (*os.Root, error) {
 }
 
 func (v *Vars) basePath() (string, error) {
+	if v.namespace == "" {
+		return "", fmt.Errorf("namespace cannot be empty")
+	}
+
+	if !validNameRegex.MatchString(v.namespace) {
+		return "", fmt.Errorf("invalid namespace %q", v.namespace)
+	}
+
 	if v.scope != "" {
 		if strings.ContainsAny(v.scope, `/\`) {
 			return "", fmt.Errorf("invalid scope %q: nesting is not allowed", v.scope)

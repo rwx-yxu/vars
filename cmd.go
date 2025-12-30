@@ -33,7 +33,7 @@ func NewCmd(namespace string, scope ...string) *cobra.Command {
 	cmd.AddCommand(&cobra.Command{
 		Use:   "init",
 		Short: "initialize empty vars file for <name>",
-		Args:  cobra.ExactArgs(0),
+		Args:  cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
 			return v.Init()
 		},
@@ -51,16 +51,16 @@ func NewCmd(namespace string, scope ...string) *cobra.Command {
 	cmd.AddCommand(&cobra.Command{
 		Use:   "unset <key>",
 		Short: "Unset a variable property key value",
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
-			return v.Unset(args[1])
+			return v.Unset(args[0])
 		},
 	})
 
 	cmd.AddCommand(&cobra.Command{
 		Use:   "data",
 		Short: "Prints all vars",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.NoArgs,
 		RunE: func(c *cobra.Command, args []string) error {
 			data, err := v.All()
 			if err != nil {
@@ -84,7 +84,7 @@ func NewCmd(namespace string, scope ...string) *cobra.Command {
 		Use:     "keys",
 		Aliases: []string{"k"},
 		Short:   "Prints all keys",
-		Args:    cobra.ExactArgs(1),
+		Args:    cobra.NoArgs,
 		RunE: func(c *cobra.Command, args []string) error {
 			data, err := v.All()
 			if err != nil {
