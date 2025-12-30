@@ -81,6 +81,15 @@ func NewCmd(namespace string, scope ...string) *cobra.Command {
 	})
 
 	cmd.AddCommand(&cobra.Command{
+		Use:   "edit",
+		Short: "Open vars file in default editor",
+		Args:  cobra.NoArgs,
+		RunE: func(c *cobra.Command, _ []string) error {
+			return v.Edit()
+		},
+	})
+
+	cmd.AddCommand(&cobra.Command{
 		Use:     "keys",
 		Aliases: []string{"k"},
 		Short:   "Prints all keys",

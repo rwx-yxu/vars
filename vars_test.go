@@ -3,6 +3,8 @@ package vars
 import (
 	"bytes"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -125,6 +127,41 @@ func TestUnset(t *testing.T) {
 	}
 	if val, _ := v.Get("theme"); val != "dark" {
 		t.Error("Unset affected other keys")
+	}
+}
+
+func TestEdit(t *testing.T) {
+
+	v := New("edit-test")
+	tempDir := t.TempDir()
+
+	v.stateDir = func() (string, error) {
+		return tempDir, nil
+	}
+
+	// --- Case 1: Fail when not initialized ---
+	if err := v.Edit(); err == nil {
+		t.Error("Expected error when editing uninitialized vars, got nil")
+	} else if !strings.Contains(err.Error(), "not initialized") {
+		t.Errorf("Expected 'not initialized' error, got: %v", err)
+	}
+
+	v.Init()
+
+	// --- Case 2: Success with a Mock Editor ---
+
+	// Create a dummy editor script that does nothing but exit successfully.
+	mockEditor := filepath.Join(tempDir, "mock-editor")
+	scriptContent := []byte("#!/bin/sh\nexit 0")
+
+	if err := os.WriteFile(mockEditor, scriptContent, 0755); err != nil {
+		t.Fatalf("Failed to create mock editor: %v", err)
+	}
+
+	t.Setenv("VISUAL", mockEditor)
+
+	if err := v.Edit(); err != nil {
+		t.Errorf("Edit() failed with mock editor: %v", err)
 	}
 }
 

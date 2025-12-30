@@ -88,6 +88,16 @@ func cmd() *cobra.Command {
 	})
 
 	cmd.AddCommand(&cobra.Command{
+		Use:   "edit <name> [scope]",
+		Short: "Edit vars file in default editor",
+		Args:  cobra.RangeArgs(1, 2),
+		RunE: func(c *cobra.Command, args []string) error {
+			ns, scope := parseArgs(args)
+			return vars.New(ns, scope...).Edit()
+		},
+	})
+
+	cmd.AddCommand(&cobra.Command{
 		Use:     "keys <name> [scope]",
 		Aliases: []string{"k"},
 		Short:   "List all keys for given vars name",

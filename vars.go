@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -170,6 +171,40 @@ func (v *Vars) All() (map[string]string, error) {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
 	return v.load()
+}
+
+func (v *Vars) Edit() error {
+	path, err := v.basePath()
+	if err != nil {
+		return err
+	}
+
+	filePath := filepath.Join(path, "vars.properties")
+
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return fmt.Errorf("vars not initialized for %q (run 'init' first)", v.namespace)
+	}
+
+	editor := os.Getenv("VISUAL")
+	if editor == "" {
+		editor = os.Getenv("EDITOR")
+	}
+	if editor == "" {
+		editor = "vi"
+	}
+
+	parts := strings.Fields(editor)
+	executable := parts[0]
+	args := parts[1:]
+	args = append(args, filePath)
+
+	cmd := exec.Command(executable, args...)
+
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	return cmd.Run()
 }
 
 func (v *Vars) load() (map[string]string, error) {
