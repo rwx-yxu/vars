@@ -26,11 +26,12 @@ func cmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(&cobra.Command{
-		Use:   "init <name>",
-		Short: "Initialize storage (Required before use)",
-		Args:  cobra.ExactArgs(0),
+		Use:   "init <name> [scope]",
+		Short: "Initialize vars (Required before use)",
+		Args:  cobra.RangeArgs(1, 2),
 		RunE: func(c *cobra.Command, args []string) error {
-			v := vars.New(args[0])
+			ns, scope := parseArgs(args)
+			v := vars.New(ns, scope...)
 			if err := v.Init(); err != nil {
 				return err
 			}
@@ -40,32 +41,35 @@ func cmd() *cobra.Command {
 	})
 
 	cmd.AddCommand(&cobra.Command{
-		Use:   "set <name> <key> <value>",
+		Use:   "set <name> [scope] <key> <value>",
 		Short: "Set a variable for a specific property",
-		Args:  cobra.ExactArgs(3),
+		Args:  cobra.RangeArgs(3, 4),
 		RunE: func(c *cobra.Command, args []string) error {
-			store := vars.New(args[0])
-			return store.Set(args[1], args[2])
+			key := args[len(args)-2]
+			val := args[len(args)-1]
+			ns, scope := parseArgs(args[:len(args)-2])
+			return vars.New(ns, scope...).Set(key, val)
 		},
 	})
 
 	cmd.AddCommand(&cobra.Command{
-		Use:   "unset <name> <key>",
+		Use:   "unset <name> [scope] <key>",
 		Short: "Unset a variable property key value",
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.RangeArgs(2, 3),
 		RunE: func(c *cobra.Command, args []string) error {
-			v := vars.New(args[0])
-			return v.Unset(args[1])
+			key := args[len(args)-1]
+			ns, scope := parseArgs(args[:len(args)-1])
+			return vars.New(ns, scope...).Unset(key)
 		},
 	})
 
 	cmd.AddCommand(&cobra.Command{
-		Use:   "data <name>",
+		Use:   "data <name> [scope]",
 		Short: "Prints all vars for given name",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.RangeArgs(1, 2),
 		RunE: func(c *cobra.Command, args []string) error {
-			v := vars.New(args[0])
-			data, err := v.All()
+			ns, scope := parseArgs(args)
+			data, err := vars.New(ns, scope...).All()
 			if err != nil {
 				return err
 			}
@@ -84,13 +88,13 @@ func cmd() *cobra.Command {
 	})
 
 	cmd.AddCommand(&cobra.Command{
-		Use:     "keys <name>",
+		Use:     "keys <name> [scope]",
 		Aliases: []string{"k"},
 		Short:   "List all keys for given vars name",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
-			v := vars.New(args[0])
-			data, err := v.All()
+			ns, scope := parseArgs(args)
+			data, err := vars.New(ns, scope...).All()
 			if err != nil {
 				return err
 			}
@@ -109,12 +113,13 @@ func cmd() *cobra.Command {
 	})
 
 	cmd.AddCommand(&cobra.Command{
-		Use:   "get <name> <key>",
+		Use:   "get <name> [scope] <key>",
 		Short: "Get a variable from a specific vars property value",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(c *cobra.Command, args []string) error {
-			store := vars.New(args[0])
-			val, err := store.Get(args[1])
+			key := args[len(args)-1]
+			ns, scope := parseArgs(args[:len(args)-1])
+			val, err := vars.New(ns, scope...).Get(key)
 			if err != nil {
 				return err
 			}
@@ -124,4 +129,12 @@ func cmd() *cobra.Command {
 	})
 
 	return cmd
+}
+
+func parseArgs(contextArgs []string) (namespace string, scope []string) {
+	namespace = contextArgs[0]
+	if len(contextArgs) > 1 {
+		scope = []string{contextArgs[1]}
+	}
+	return namespace, scope
 }

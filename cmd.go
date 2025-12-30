@@ -6,12 +6,26 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewCmd(appName string) *cobra.Command {
-	vars := New(appName)
+func NewCmd(namespace string, scope ...string) *cobra.Command {
+	if len(scope) > 1 {
+		panic("vars: strict mode allows only a single level of scope")
+	}
+
+	currentScope := ""
+	if len(scope) > 0 {
+		currentScope = scope[0]
+	}
+
+	desc := namespace
+	if currentScope != "" {
+		desc += "/" + currentScope
+	}
+
+	v := New(namespace, scope...)
 
 	cmd := &cobra.Command{
 		Use:           "vars",
-		Short:         "Manage variables for " + appName,
+		Short:         "Manage variables for " + desc,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -21,8 +35,7 @@ func NewCmd(appName string) *cobra.Command {
 		Short: "initialize empty vars file for <name>",
 		Args:  cobra.ExactArgs(0),
 		RunE: func(c *cobra.Command, _ []string) error {
-			vars := New(appName)
-			return vars.Init()
+			return v.Init()
 		},
 	})
 
@@ -31,7 +44,7 @@ func NewCmd(appName string) *cobra.Command {
 		Short: "Set a variable",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(c *cobra.Command, args []string) error {
-			return vars.Set(args[0], args[1])
+			return v.Set(args[0], args[1])
 		},
 	})
 
@@ -40,7 +53,7 @@ func NewCmd(appName string) *cobra.Command {
 		Short: "Unset a variable property key value",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(c *cobra.Command, args []string) error {
-			return vars.Unset(args[1])
+			return v.Unset(args[1])
 		},
 	})
 
@@ -49,7 +62,7 @@ func NewCmd(appName string) *cobra.Command {
 		Short: "Prints all vars",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
-			data, err := vars.All()
+			data, err := v.All()
 			if err != nil {
 				return err
 			}
@@ -73,7 +86,7 @@ func NewCmd(appName string) *cobra.Command {
 		Short:   "Prints all keys",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
-			data, err := vars.All()
+			data, err := v.All()
 			if err != nil {
 				return err
 			}
@@ -96,7 +109,7 @@ func NewCmd(appName string) *cobra.Command {
 		Short: "Get a variable",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
-			val, err := vars.Get(args[0])
+			val, err := v.Get(args[0])
 			if err != nil {
 				return err
 			}

@@ -13,15 +13,25 @@ import (
 )
 
 type Vars struct {
-	name string
-	mu   sync.RWMutex
+	namespace string
+	scope     string
+	mu        sync.RWMutex
 }
 
 var validNameRegex = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
 
-func New(name string) *Vars {
+func New(ns string, scope ...string) *Vars {
+	s := ""
+	if len(scope) > 0 {
+		if len(scope) > 1 {
+			// Fail fast for developer error
+			panic("vars: strict mode allows only a single level of scope (no nesting)")
+		}
+		s = scope[0]
+	}
 	return &Vars{
-		name: name,
+		namespace: ns,
+		scope:     s,
 	}
 }
 
@@ -54,12 +64,12 @@ func (v *Vars) Init() error {
 }
 
 func (v *Vars) root() (*os.Root, error) {
-	if v.name == "" {
+	if v.scope == "" {
 		return nil, fmt.Errorf("vars name cannot be empty")
 	}
 
-	if !validNameRegex.MatchString(v.name) {
-		return nil, fmt.Errorf("invalid app name %q: must be alphanumeric/safe", v.name)
+	if !validNameRegex.MatchString(v.scope) {
+		return nil, fmt.Errorf("invalid app name %q: must be alphanumeric/safe", v.scope)
 	}
 
 	path, err := v.basePath()
@@ -69,7 +79,7 @@ func (v *Vars) root() (*os.Root, error) {
 
 	root, err := os.OpenRoot(path)
 	if os.IsNotExist(err) {
-		return nil, fmt.Errorf("vars not initialized for %q (run 'init' first)", v.name)
+		return nil, fmt.Errorf("vars not initialized for %q (run 'init' first)", v.scope)
 	}
 	if err != nil {
 		return nil, err
@@ -79,17 +89,28 @@ func (v *Vars) root() (*os.Root, error) {
 }
 
 func (v *Vars) basePath() (string, error) {
-	// XDG Compliance: Check env var first
-	if xdg := os.Getenv("XDG_STATE_HOME"); xdg != "" {
-		return filepath.Join(xdg, v.name), nil
+	if v.scope != "" {
+		if strings.ContainsAny(v.scope, `/\`) {
+			return "", fmt.Errorf("invalid scope %q: nesting is not allowed", v.scope)
+		}
+		if !validNameRegex.MatchString(v.scope) {
+			return "", fmt.Errorf("invalid scope %q", v.scope)
+		}
 	}
 
-	// Fallback to ~/.local/state
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
+	var rootDir string
+
+	if xdg := os.Getenv("XDG_STATE_HOME"); xdg != "" {
+		rootDir = xdg
+	} else {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		rootDir = filepath.Join(home, ".local", "state")
 	}
-	return filepath.Join(home, ".local", "state", v.name), nil
+
+	return filepath.Join(rootDir, v.namespace, v.scope), nil
 }
 
 func (v *Vars) Get(key string) (string, error) {
