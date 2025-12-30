@@ -164,6 +164,7 @@ func TestConcurrency(t *testing.T) {
 // --- TEST: CLI Integration (Checking Args & Wiring) ---
 
 func TestEmbeddedCmdIntegration(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
 	rootCmd := NewCmd("pomo-test", "timer")
 
 	exec := func(args ...string) error {
