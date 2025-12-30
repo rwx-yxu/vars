@@ -6,6 +6,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// NewCmd returns a [cobra.Command] for managing persistent variables.
+//
+// The namespace argument creates a root directory for the application in the
+// user's state home (e.g., ~/.local/state/my-app). If an optional scope is
+// provided, variables are stored in a subdirectory of that namespace
+// (e.g., ~/.local/state/my-app/ingest).
+//
+// The returned command contains subcommands for standard operations:
+//  1. init: Initialize the storage.
+//  2. set/unset: Write changes to the store.
+//  3. get/data/keys: Read values from the store.
+//  4. edit: Open the store in the user's preferred editor.
 func NewCmd(namespace string, scope ...string) *cobra.Command {
 	if len(scope) > 1 {
 		panic("vars: strict mode allows only a single level of scope")

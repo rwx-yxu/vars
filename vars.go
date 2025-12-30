@@ -1,3 +1,8 @@
+// Package vars provides a simple, filesystem-backed key-value store for
+// managing persistent application state.
+//
+// It adheres to the XDG Base Directory specification, storing properties in
+// strict "namespace/scope" directories within [os.UserHomeDir].
 package vars
 
 import (
@@ -13,6 +18,11 @@ import (
 	"sync"
 )
 
+// Vars provides thread-safe access to persistent vars properties.
+// It handles the creation, reading, writing, and editing of the underlying
+// properties file.
+//
+// Do not create this struct directly; use [New].
 type Vars struct {
 	namespace string
 	scope     string
@@ -33,6 +43,18 @@ func defaultStateDir() (string, error) {
 	return filepath.Join(home, ".local", "state"), nil
 }
 
+// New returns a handle for managing variables within a specific namespace.
+//
+// The namespace usually corresponds to the application name. An optional
+// scope argument can be provided to isolate variables into a subdirectory
+// of the namespace.
+//
+//	v := vars.New("my-app")         // stores in .../my-app/vars.properties
+//	v := vars.New("my-app", "ingest") // stores in .../my-app/ingest/vars.properties
+//
+// Strict mode allows only a single level of scope to prevent deep nesting.
+//
+// You must call [Vars.Init] on the returned instance before setting values.
 func New(ns string, scope ...string) *Vars {
 	s := ""
 	if len(scope) > 0 {
@@ -49,6 +71,10 @@ func New(ns string, scope ...string) *Vars {
 	}
 }
 
+// Init ensures that the underlying storage directory and properties file exist.
+//
+// Init must be called before performing any [Vars.Set] or [Vars.Edit] operations.
+// It is safe to call Init multiple times.
 func (v *Vars) Init() error {
 
 	path, err := v.basePath()
@@ -124,6 +150,10 @@ func (v *Vars) basePath() (string, error) {
 	return filepath.Join(rootDir, v.namespace, v.scope), nil
 }
 
+// Get returns the value associated with the given key.
+//
+// It returns an error if vars has not been initialized (see [Vars.Init])
+// or if the key does not exist.
 func (v *Vars) Get(key string) (string, error) {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
@@ -139,6 +169,10 @@ func (v *Vars) Get(key string) (string, error) {
 	return val, nil
 }
 
+// Set stores the value for the given key, overwriting it if it already exists.
+//
+// Changes are persisted to disk immediately. Returns an error if vars
+// has not been initialized.
 func (v *Vars) Set(key, val string) error {
 	v.mu.Lock()
 	defer v.mu.Unlock()
@@ -155,6 +189,9 @@ func (v *Vars) Set(key, val string) error {
 	return v.save(m)
 }
 
+// Unset removes the specified key and its value from vars.properties.
+//
+// If the key does not exist, Unset returns nil.
 func (v *Vars) Unset(key string) error {
 	v.mu.Lock()
 	defer v.mu.Unlock()
@@ -167,12 +204,21 @@ func (v *Vars) Unset(key string) error {
 	return v.save(m)
 }
 
+// All returns a copy of all stored variables as a map.
 func (v *Vars) All() (map[string]string, error) {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
 	return v.load()
 }
 
+// Edit opens the properties file in the user's preferred editor.
+//
+// It resolves the editor in the following order:
+//  1. The "VISUAL" environment variable.
+//  2. The "EDITOR" environment variable.
+//  3. A fallback to "vi".
+//
+// This method blocks until the editor process completes.
 func (v *Vars) Edit() error {
 	path, err := v.basePath()
 	if err != nil {
