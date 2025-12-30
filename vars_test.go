@@ -3,38 +3,14 @@ package vars
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"strings"
 	"sync"
 	"testing"
 )
 
-func setupEnv(t *testing.T) (string, func()) {
-	t.Helper()
-	tempHome := t.TempDir()
-
-	origHome := os.Getenv("HOME")
-	origXDG := os.Getenv("XDG_STATE_HOME")
-
-	os.Setenv("HOME", tempHome)
-	os.Unsetenv("XDG_STATE_HOME")
-
-	return tempHome, func() {
-		os.Setenv("HOME", origHome)
-		if origXDG != "" {
-			os.Setenv("XDG_STATE_HOME", origXDG)
-		} else {
-			os.Unsetenv("XDG_STATE_HOME")
-		}
-	}
-}
-
 // --- TEST: Core Logic & Edge Cases ---
 
 func TestStrictScopes(t *testing.T) {
-	_, teardown := setupEnv(t)
-	defer teardown()
-
 	tests := []struct {
 		name      string
 		scopeArgs []string
@@ -61,6 +37,10 @@ func TestStrictScopes(t *testing.T) {
 			}()
 
 			v := New("pomo-cli", tt.scopeArgs...)
+			tempDir := t.TempDir()
+			v.stateDir = func() (string, error) {
+				return tempDir, nil
+			}
 
 			if tt.wantPanic {
 				return
@@ -81,11 +61,11 @@ func TestStrictScopes(t *testing.T) {
 }
 
 func TestUninitializedAccess(t *testing.T) {
-	_, teardown := setupEnv(t)
-	defer teardown()
-
 	v := New("weather-cli")
-
+	tempDir := t.TempDir()
+	v.stateDir = func() (string, error) {
+		return tempDir, nil
+	}
 	if err := v.Set("api_key", "12345"); err == nil {
 		t.Error("Set should fail if Init() hasn't been called")
 	} else if !strings.Contains(err.Error(), "not initialized") {
@@ -98,20 +78,24 @@ func TestUninitializedAccess(t *testing.T) {
 }
 
 func TestPersistenceAndEncoding(t *testing.T) {
-	_, teardown := setupEnv(t)
-	defer teardown()
-
 	ns := "api"
 	key := "secret_key"
 	val := "-----BEGIN PUBLIC KEY-----\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n-----END PUBLIC KEY-----"
 
 	v1 := New(ns)
+	tempDir := t.TempDir()
+	v1.stateDir = func() (string, error) {
+		return tempDir, nil
+	}
 	v1.Init()
 	if err := v1.Set(key, val); err != nil {
 		t.Fatal(err)
 	}
 
 	v2 := New(ns)
+	v2.stateDir = func() (string, error) {
+		return tempDir, nil
+	}
 	got, err := v2.Get(key)
 	if err != nil {
 		t.Fatal(err)
@@ -123,10 +107,11 @@ func TestPersistenceAndEncoding(t *testing.T) {
 }
 
 func TestUnset(t *testing.T) {
-	_, teardown := setupEnv(t)
-	defer teardown()
-
 	v := New("todo-app")
+	tempDir := t.TempDir()
+	v.stateDir = func() (string, error) {
+		return tempDir, nil
+	}
 	v.Init()
 	v.Set("theme", "dark")
 	v.Set("show_completed", "true")
@@ -146,10 +131,11 @@ func TestUnset(t *testing.T) {
 // --- TEST: Concurrency ---
 
 func TestConcurrency(t *testing.T) {
-	_, teardown := setupEnv(t)
-	defer teardown()
-
 	v := New("stock-ticker")
+	tempDir := t.TempDir()
+	v.stateDir = func() (string, error) {
+		return tempDir, nil
+	}
 	v.Init()
 
 	var wg sync.WaitGroup
@@ -178,10 +164,7 @@ func TestConcurrency(t *testing.T) {
 // --- TEST: CLI Integration (Checking Args & Wiring) ---
 
 func TestEmbeddedCmdIntegration(t *testing.T) {
-	_, teardown := setupEnv(t)
-	defer teardown()
-
-	rootCmd := NewCmd("pomo", "timer")
+	rootCmd := NewCmd("pomo-test", "timer")
 
 	exec := func(args ...string) error {
 		rootCmd.SetArgs(args)

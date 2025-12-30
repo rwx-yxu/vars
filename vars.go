@@ -16,9 +16,21 @@ type Vars struct {
 	namespace string
 	scope     string
 	mu        sync.RWMutex
+	stateDir  func() (string, error)
 }
 
 var validNameRegex = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
+
+func defaultStateDir() (string, error) {
+	if xdg := os.Getenv("XDG_STATE_HOME"); xdg != "" {
+		return xdg, nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".local", "state"), nil
+}
 
 func New(ns string, scope ...string) *Vars {
 	s := ""
@@ -32,6 +44,7 @@ func New(ns string, scope ...string) *Vars {
 	return &Vars{
 		namespace: ns,
 		scope:     s,
+		stateDir:  defaultStateDir,
 	}
 }
 
@@ -102,16 +115,9 @@ func (v *Vars) basePath() (string, error) {
 		}
 	}
 
-	var rootDir string
-
-	if xdg := os.Getenv("XDG_STATE_HOME"); xdg != "" {
-		rootDir = xdg
-	} else {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return "", err
-		}
-		rootDir = filepath.Join(home, ".local", "state")
+	rootDir, err := v.stateDir()
+	if err != nil {
+		return "", err
 	}
 
 	return filepath.Join(rootDir, v.namespace, v.scope), nil
